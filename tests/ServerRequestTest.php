@@ -4,6 +4,7 @@ namespace Marvin255\Bxrequest\tests;
 
 use Marvin255\Bxrequest\ServerRequest;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 use InvalidArgumentException;
 
 /**
@@ -12,13 +13,110 @@ use InvalidArgumentException;
 class ServerRequestTest extends BaseTestCase
 {
     /**
+     * Проверяет, что объект возвращает правильную цель запроса.
+     */
+    public function testGetRequestTarget()
+    {
+        $target = '/test/' . mt_rand(0, 1);
+
+        $bxRequest = $this->createRequestMock(['getRequestUri' => $target]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+
+        $this->assertSame($target, $request->getRequestTarget());
+    }
+
+    /**
+     * Проверяет, что объект задает новую цель запроса.
+     */
+    public function testWithRequestTarget()
+    {
+        $target = '/test/' . mt_rand(0, 1);
+        $newTarget = '/test_new/' . mt_rand(0, 1);
+
+        $bxRequest = $this->createRequestMock(['getRequestUri' => $target]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withRequestTarget($newTarget);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newTarget, $newRequest->getRequestTarget());
+    }
+
+    /**
+     * Проверяет, что объект возвращает правильную цель запроса.
+     */
+    public function testGetMethod()
+    {
+        $method = 'DELETE';
+
+        $bxRequest = $this->createRequestMock(['getRequestMethod' => $method]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+
+        $this->assertSame($method, $request->getMethod());
+    }
+
+    /**
+     * Проверяет, что объект задает новый метод запроса.
+     */
+    public function testWithMethod()
+    {
+        $method = 'DELETE';
+        $newMethod = 'POST';
+
+        $bxRequest = $this->createRequestMock(['getRequestMethod' => $method]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withMethod($newMethod);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newMethod, $newRequest->getMethod());
+    }
+
+    /**
+     * Проверяет, что объект возвращает uri.
+     */
+    public function testGetUri()
+    {
+        $target = '/test/' . mt_rand(0, 1);
+
+        $bxRequest = $this->createRequestMock(['getRequestUri' => $target]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+
+        $this->assertSame($target, $request->getUri()->getPath());
+    }
+
+    /**
+     * Проверяет, что объект возвращает uri.
+     */
+    public function testWithUri()
+    {
+        $bxRequest = $this->createRequestMock();
+        $server = $this->createServerMock();
+        $newUri = $this->getMockBuilder(UriInterface::class)->getMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withUri($newUri);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newUri, $newRequest->getUri());
+    }
+
+    /**
      * Проверяет, что запрос верно возвращает версию http.
      */
     public function testGetProtocolVersion()
     {
         $version = '1.' . mt_rand(0, 1);
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock(['SERVER_PROTOCOL' => "HTTP/{$version}"]);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -34,7 +132,7 @@ class ServerRequestTest extends BaseTestCase
         $version = '1.1';
         $newVersion = '1.0';
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock(['SERVER_PROTOCOL' => "HTTP/{$version}"]);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -60,7 +158,7 @@ class ServerRequestTest extends BaseTestCase
             'user-agent' => [$serverHeaders['HTTP_USER_AGENT']],
         ];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -82,7 +180,7 @@ class ServerRequestTest extends BaseTestCase
             'HTTP_TEST' => 'test_' . mt_rand(),
         ];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -101,7 +199,7 @@ class ServerRequestTest extends BaseTestCase
         ];
         $etalonHeader = [$serverHeaders['HTTP_TEST']];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -120,7 +218,7 @@ class ServerRequestTest extends BaseTestCase
         ];
         $etalonHeader = $serverHeaders['HTTP_TEST'];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -139,7 +237,7 @@ class ServerRequestTest extends BaseTestCase
         ];
         $newHeader = 'test_new_' . mt_rand();
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -154,7 +252,7 @@ class ServerRequestTest extends BaseTestCase
      */
     public function testWithHeaderEmptyNameException()
     {
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
@@ -176,7 +274,7 @@ class ServerRequestTest extends BaseTestCase
         $emptyHeaderValue = 'test_empty_' . mt_rand();
         $emptyEtalonHeader = [$emptyHeaderValue];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -194,7 +292,7 @@ class ServerRequestTest extends BaseTestCase
      */
     public function testWithAddedHeaderEmptyNameException()
     {
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
@@ -212,7 +310,7 @@ class ServerRequestTest extends BaseTestCase
             'HTTP_TEST' => 'test_' . mt_rand(),
         ];
 
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock($serverHeaders);
 
         $request = new ServerRequest($bxRequest, $server);
@@ -227,7 +325,7 @@ class ServerRequestTest extends BaseTestCase
      */
     public function testGetBody()
     {
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
@@ -240,7 +338,7 @@ class ServerRequestTest extends BaseTestCase
      */
     public function testWithBody()
     {
-        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')->getMock();
+        $bxRequest = $this->createRequestMock();
         $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
@@ -250,6 +348,31 @@ class ServerRequestTest extends BaseTestCase
 
         $this->assertNotSame($request, $newRequest);
         $this->assertSame($newBody, $newRequest->getBody());
+    }
+
+    /**
+     * Возвращает мок для объекта запроса.
+     *
+     * @param array $additionalHeaders
+     *
+     * @return \Bitrix\Main\HttpRequest
+     */
+    protected function createRequestMock(array $additionalMethods = [])
+    {
+        $defaultMethods = [
+            'getRequestUri' => '/',
+            'getRequestMethod' => 'GET',
+        ];
+        $allMethods = array_merge($defaultMethods, $additionalMethods);
+
+        $bxRequest = $this->getMockBuilder('Bitrix\Main\HttpRequest')
+            ->setMethods(array_keys($allMethods))
+            ->getMock();
+        foreach ($allMethods as $methodName => $methodValue) {
+            $bxRequest->method($methodName)->will($this->returnValue($methodValue));
+        }
+
+        return $bxRequest;
     }
 
     /**

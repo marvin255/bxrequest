@@ -3,7 +3,6 @@
 namespace Marvin255\Bxrequest;
 
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
 use Bitrix\Main\HttpRequest;
 use Bitrix\Main\Server;
 use Marvin255\Bxrequest\streams\Input;
@@ -14,6 +13,7 @@ use Marvin255\Bxrequest\streams\Input;
 class ServerRequest implements ServerRequestInterface
 {
     use \Marvin255\Bxrequest\traits\Message;
+    use \Marvin255\Bxrequest\traits\Request;
 
     /**
      * @var \Bitrix\Main\HttpRequest
@@ -26,7 +26,7 @@ class ServerRequest implements ServerRequestInterface
      */
     public function __construct(HttpRequest $bitrixRequest, Server $bitrixServer)
     {
-        $this->bitrixRequest = $bitrixRequest;
+        $this->loadRequestInfo($bitrixRequest);
         $this->loadServerInfo($bitrixServer);
     }
 
@@ -122,49 +122,20 @@ class ServerRequest implements ServerRequestInterface
     }
 
     /**
-     * @inheritdoc
-     */
-    public function getRequestTarget()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withRequestTarget($requestTarget)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getMethod()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withMethod($method)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getUri()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withUri(UriInterface $uri, $preserveHost = false)
-    {
-    }
-
-    /**
      * Разбирает объект битрикса с параметрами запроса в переменные для
+     * текущего объекта.
+     *
+     * @param \Bitrix\Main\HttpRequest $request
+     */
+    protected function loadRequestInfo(HttpRequest $request)
+    {
+        $this->requestTarget = $request->getRequestUri();
+        $this->method = $request->getRequestMethod();
+        $this->uri = new Uri($request->getRequestUri());
+    }
+
+    /**
+     * Разбирает объект битрикса с параметрами сервера в переменные для
      * текущего объекта.
      *
      * @param \Bitrix\Main\Server $server
