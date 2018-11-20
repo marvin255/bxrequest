@@ -3,36 +3,22 @@
 namespace Marvin255\Bxrequest\tests\streams;
 
 use Marvin255\Bxrequest\tests\BaseTestCase;
-use Marvin255\Bxrequest\streams\Input;
+use Marvin255\Bxrequest\streams\Any;
 use InvalidArgumentException;
-use RuntimeException;
 
 /**
- * Тест для потока, который читает данные из php://input.
+ * Тест для любого потока, который можно открыть fopen.
  */
-class InputTest extends BaseTestCase
+class AnyTest extends BaseTestCase
 {
     /**
      * Проверяет, что объект выбросит исключение, если в конструкторе
-     * указан не ресурс.
+     * указан неверный uri.
      */
     public function testConstructorResourceException()
     {
         $this->setExpectedException(InvalidArgumentException::class);
-        new Input('testToString.txt');
-    }
-
-    /**
-     * Проверяет, что объект выбрасывет исключение, если ресурс потока php
-     * отключен.
-     */
-    public function testCheckStreamException()
-    {
-        $stream = new Input($this->createHandler('testToString.txt'));
-        $stream->detach();
-
-        $this->setExpectedException(RuntimeException::class);
-        $stream->read(1024);
+        new Any('testToString.txt');
     }
 
     /**
@@ -40,7 +26,7 @@ class InputTest extends BaseTestCase
      */
     public function testToString()
     {
-        $stream = new Input($this->createHandler('testToString.txt'));
+        $stream = new Any($this->getPath('testToString.txt'));
 
         $this->assertSame(
             $this->getFileContents('testToString_expected.txt'),
@@ -55,7 +41,7 @@ class InputTest extends BaseTestCase
      */
     public function testSeekAndTell()
     {
-        $stream = new Input($this->createHandler('testSeekAndTell.txt'));
+        $stream = new Any($this->getPath('testSeekAndTell.txt'));
 
         $stream->seek(3);
         $readed = $stream->read(3);
@@ -77,7 +63,7 @@ class InputTest extends BaseTestCase
      */
     public function testEof()
     {
-        $stream = new Input($this->createHandler('testEof.txt'));
+        $stream = new Any($this->getPath('testEof.txt'));
 
         $this->assertFalse($stream->eof());
 
@@ -98,13 +84,14 @@ class InputTest extends BaseTestCase
     /**
      * Проверяет, что в данный поток нельзя писать.
      */
-    public function testWriteException()
+    public function testWrite()
     {
-        $stream = new Input($this->createHandler('testWriteException.txt'));
+        $string = 'test_' . mt_rand();
+        $stream = new Any('php://temp', 'r+');
 
-        $this->assertFalse($stream->isWritable());
-        $this->setExpectedException(RuntimeException::class);
-        $stream->write('test');
+        $this->assertTrue($stream->isWritable());
+        $stream->write($string);
+        $this->assertSame($string, (string) $stream);
     }
 
     /**
@@ -112,7 +99,7 @@ class InputTest extends BaseTestCase
      */
     public function testRead()
     {
-        $stream = new Input($this->createHandler('testRead.txt'));
+        $stream = new Any($this->getPath('testRead.txt'));
         $stream->read(3);
 
         $this->assertTrue($stream->isReadable());
@@ -129,7 +116,7 @@ class InputTest extends BaseTestCase
      */
     public function testGetContents()
     {
-        $stream = new Input($this->createHandler('testGetContents.txt'));
+        $stream = new Any($this->getPath('testGetContents.txt'));
 
         $this->assertSame(
             $this->getFileContents('testGetContents_expected.txt'),
@@ -144,10 +131,10 @@ class InputTest extends BaseTestCase
      */
     public function testGetMetadata()
     {
-        $stream = new Input($this->createHandler('testGetMetadata.txt'));
+        $stream = new Any($this->getPath('testGetMetadata.txt'));
 
         $this->assertSame(
-            __DIR__ . '/_input_test_fixture/testGetMetadata.txt',
+            __DIR__ . '/_any_test_fixture/testGetMetadata.txt',
             $stream->getMetadata('uri')
         );
         $this->assertArrayHasKey('uri', $stream->getMetadata());
@@ -162,7 +149,7 @@ class InputTest extends BaseTestCase
      */
     protected function getFileContents($fileName)
     {
-        return file_get_contents(__DIR__ . "/_input_test_fixture/{$fileName}");
+        return file_get_contents(__DIR__ . "/_any_test_fixture/{$fileName}");
     }
 
     /**
@@ -172,8 +159,8 @@ class InputTest extends BaseTestCase
      *
      * @return resource
      */
-    protected function createHandler($fileName)
+    protected function getPath($fileName)
     {
-        return fopen(__DIR__ . "/_input_test_fixture/{$fileName}", 'rb');
+        return __DIR__ . "/_any_test_fixture/{$fileName}";
     }
 }

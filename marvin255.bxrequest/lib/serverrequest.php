@@ -50,9 +50,9 @@ class ServerRequest implements ServerRequestInterface
         $this->method = $request->getRequestMethod();
         $this->uri = new Uri($request->getRequestUri());
 
-        foreach ($request->getHeaders()->toArray() as $header => $headerValue) {
-            $this->headers[$header] = is_array($headerValue) ? $headerValue : [$headerValue];
-        }
+        $this->headers = $this->normalizeHeadersList(
+            $request->getHeaders()->toArray()
+        );
     }
 
     /**

@@ -97,14 +97,13 @@ trait Message
             throw new InvalidArgumentException("Header name can't be empty");
         }
 
-        $value = is_array($value) ? array_map('trim', $value) : [trim($value)];
-        $value = array_diff($value, ['']);
+        $normalizedValue = $this->normalizeHeaderValue($value);
 
         $headers = $this->headers;
         if ($internalIndex = $this->searchHeaderInternalIndex($name)) {
             unset($headers[$internalIndex]);
         }
-        $headers[$name] = $value;
+        $headers[$name] = $normalizedValue;
 
         $newRequest = clone $this;
         $newRequest->headers = $headers;
@@ -127,14 +126,16 @@ trait Message
             throw new InvalidArgumentException("Header name can't be empty");
         }
 
-        $value = is_array($value) ? array_map('trim', $value) : [trim($value)];
-        $value = array_diff($value, ['']);
+        $normalizedValue = $this->normalizeHeaderValue($value);
 
         $headers = $this->headers;
         if ($internalIndex = $this->searchHeaderInternalIndex($name)) {
-            $headers[$internalIndex] = array_merge($headers[$internalIndex], $value);
+            $headers[$internalIndex] = array_merge(
+                $headers[$internalIndex],
+                $normalizedValue
+            );
         } else {
-            $headers[$name] = $value;
+            $headers[$name] = $normalizedValue;
         }
 
         $newRequest = clone $this;
@@ -195,14 +196,34 @@ trait Message
      */
     protected function searchHeaderInternalIndex($header)
     {
-        $normilizedSearchName = $this->normilizeHeaderName($header);
+        $normalizedSearchName = $this->normalizeHeaderName($header);
         $return = null;
 
         foreach ($this->headers as $header => $value) {
-            if ($this->normilizeHeaderName($header) === $normilizedSearchName) {
+            if ($this->normalizeHeaderName($header) === $normalizedSearchName) {
                 $return = $header;
                 break;
             }
+        }
+
+        return $return;
+    }
+
+    /**
+     * Приводит массив заголовков к общему виду.
+     *
+     * @param array $headers
+     *
+     * @return array
+     */
+    protected function normalizeHeadersList(array $headers)
+    {
+        $return = [];
+
+        foreach ($headers as $headerName => $headerValue) {
+            $normalizedName = $this->normalizeHeaderName($headerName);
+            $normalizedValue = $this->normalizeHeaderValue($headerValue);
+            $return[$normalizedName] = $normalizedValue;
         }
 
         return $return;
@@ -215,8 +236,22 @@ trait Message
      *
      * @return string
      */
-    protected function normilizeHeaderName($header)
+    protected function normalizeHeaderName($header)
     {
         return strtolower($header);
+    }
+
+    /**
+     * Нормализует значение заголовка.
+     *
+     * @param mixed $value
+     *
+     * @return array
+     */
+    protected function normalizeHeaderValue($value)
+    {
+        $normalized = is_array($value) ? array_keys($value) : [$value];
+
+        return array_map('trim', $normalized);
     }
 }
