@@ -6,12 +6,289 @@ use Marvin255\Bxrequest\ServerRequest;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Тест для объекта с методами для получения данных из http запроса на сервере.
  */
 class ServerRequestTest extends BaseTestCase
 {
+    /**
+     * Проверяет, что объект возвращает параметры из массива $_SERVER.
+     */
+    public function testGetServerParams()
+    {
+        $serverParams = [
+            'SERVER_PARAM_' . mt_rand() => 'SERVER_VALUE_' . mt_rand(),
+            'SERVER_PARAM_1_' . mt_rand() => 'SERVER_VALUE_1_' . mt_rand(),
+        ];
+
+        $bxRequest = $this->createRequestMock();
+        $server = $this->createServerMock($serverParams);
+
+        $request = new ServerRequest($bxRequest, $server);
+        $testServerParams = $request->getServerParams();
+
+        $this->assertInternalType('array', $testServerParams);
+        foreach ($serverParams as $etalonHeaderName => $etalonHeaderValue) {
+            $this->assertArrayHasKey($etalonHeaderName, $testServerParams);
+            $this->assertSame($etalonHeaderValue, $testServerParams[$etalonHeaderName]);
+        }
+    }
+
+    /**
+     * Проверяет, что объект возвращает параметры из массива $_COOKIE.
+     */
+    public function testGetCookieParams()
+    {
+        $cookies = [
+            'COOKIE_' . mt_rand() => 'COOKIE_VALUE_' . mt_rand(),
+            'COOKIE_1_' . mt_rand() => 'COOKIE_VALUE_1_' . mt_rand(),
+        ];
+
+        $cookiesDictionary = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $cookiesDictionary->method('toArray')->will($this->returnValue($cookies));
+
+        $bxRequest = $this->createRequestMock(['getCookieRawList' => $cookiesDictionary]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $testCookies = $request->getCookieParams();
+        sort($testCookies);
+        sort($cookies);
+
+        $this->assertSame($cookies, $testCookies);
+    }
+
+    /**
+     * Проверяет, что объект заменяет массив с куками.
+     */
+    public function testWithCookieParams()
+    {
+        $cookies = [
+            'COOKIE_' . mt_rand() => 'COOKIE_VALUE_' . mt_rand(),
+            'COOKIE_1_' . mt_rand() => 'COOKIE_VALUE_1_' . mt_rand(),
+        ];
+        $newCookies = [
+            'COOKIE_2_' . mt_rand() => 'COOKIE_VALUE_2_' . mt_rand(),
+            'COOKIE_3_' . mt_rand() => 'COOKIE_VALUE_3_' . mt_rand(),
+        ];
+
+        $cookiesDictionary = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $cookiesDictionary->method('toArray')->will($this->returnValue($cookies));
+
+        $bxRequest = $this->createRequestMock(['getCookieRawList' => $cookiesDictionary]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withCookieParams($newCookies);
+        $testCookies = $newRequest->getCookieParams();
+
+        sort($testCookies);
+        sort($newCookies);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newCookies, $testCookies);
+    }
+
+    /**
+     * Проверяет, что объект возвращает параметры из массива $_GET.
+     */
+    public function testGetQueryParams()
+    {
+        $queryParams = [
+            'QUERY_PARAM_' . mt_rand() => 'QUERY_PARAM_VALUE_' . mt_rand(),
+            'QUERY_PARAM_1_' . mt_rand() => 'QUERY_PARAM_VALUE_1_' . mt_rand(),
+        ];
+
+        $queryDictionary = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $queryDictionary->method('toArray')->will($this->returnValue($queryParams));
+
+        $bxRequest = $this->createRequestMock(['getQueryList' => $queryDictionary]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $testQueryParams = $request->getQueryParams();
+        sort($testQueryParams);
+        sort($queryParams);
+
+        $this->assertSame($queryParams, $testQueryParams);
+    }
+
+    /**
+     * Проверяет, что объект заменяет массив с параметрами запроса.
+     */
+    public function testWithQueryParams()
+    {
+        $queryParams = [
+            'QUERY_PARAM_' . mt_rand() => 'QUERY_PARAM_VALUE_' . mt_rand(),
+            'QUERY_PARAM_1_' . mt_rand() => 'QUERY_PARAM_VALUE_1_' . mt_rand(),
+        ];
+        $newQueryParams = [
+            'QUERY_PARAM_2_' . mt_rand() => 'QUERY_PARAM_VALUE_2_' . mt_rand(),
+            'QUERY_PARAM_3_' . mt_rand() => 'QUERY_PARAM_VALUE_3_' . mt_rand(),
+        ];
+
+        $queryDictionary = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $queryDictionary->method('toArray')->will($this->returnValue($queryParams));
+
+        $bxRequest = $this->createRequestMock(['getQueryList' => $queryDictionary]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withQueryParams($newQueryParams);
+        $testQueryParams = $newRequest->getQueryParams();
+
+        sort($testQueryParams);
+        sort($newQueryParams);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newQueryParams, $testQueryParams);
+    }
+
+    /**
+     * Проверяет, что объект возвращает данные запроса из POST.
+     */
+    public function testGetParsedBodyPost()
+    {
+        $postParamsArray = [
+            'POST_PARAM_' . mt_rand() => 'POST_PARAM_VALUE_' . mt_rand(),
+            'POST_PARAM_1_' . mt_rand() => 'POST_PARAM_VALUE_1_' . mt_rand(),
+        ];
+
+        $postParams = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $postParams->method('toArray')->will($this->returnValue($postParamsArray));
+
+        $bxRequest = $this->createRequestMock([
+            'getHeader' => function ($header) {
+                return $header === 'content-type' ? 'multipart/form-data;charset=utf8' : null;
+            },
+            'isPost' => true,
+            'getPostList' => $postParams,
+        ]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $parsedBody = $request->getParsedBody();
+
+        sort($postParamsArray);
+        sort($parsedBody);
+
+        $this->assertSame($postParamsArray, $parsedBody);
+    }
+
+    /**
+     * Проверяет, что объект возвращает данные запроса из json.
+     */
+    public function testGetParsedBodyJson()
+    {
+        $json = [
+            'JSON_PARAM_1_' . mt_rand() => 'JSON_VALUE_1_' . mt_rand(),
+            'JSON_PARAM_2_' . mt_rand() => 'JSON_VALUE_2_' . mt_rand(),
+        ];
+
+        $bxRequest = $this->createRequestMock([
+            'getHeader' => function ($header) {
+                return $header === 'content-type' ? 'application/json;charset=utf8' : null;
+            },
+            'getInput' => json_encode($json),
+        ]);
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $parsedBody = $request->getParsedBody();
+
+        sort($json);
+        sort($parsedBody);
+
+        $this->assertSame($json, $parsedBody);
+    }
+
+    /**
+     * Проверяет, что объект возвращает исключение, если не может распарсить
+     * json в запросе.
+     */
+    public function testGetParsedBodyJsonException()
+    {
+        $bxRequest = $this->createRequestMock([
+            'getHeader' => function ($header) {
+                return $header === 'content-type' ? 'application/json;charset=utf8' : null;
+            },
+            'getInput' => '}',
+        ]);
+        $server = $this->createServerMock();
+
+        $this->setExpectedException(RuntimeException::class);
+        new ServerRequest($bxRequest, $server);
+    }
+
+    /**
+     * Проверяет, что объект заменяет данные из запроса.
+     */
+    public function testWithParsedBody()
+    {
+        $newBody = 'new_body_' . mt_rand();
+
+        $bxRequest = $this->createRequestMock();
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withParsedBody($newBody);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($newBody, $newRequest->getParsedBody());
+    }
+
+    /**
+     * Проверяет, что объект заменяет указанный атрибут.
+     */
+    public function testWithAttribute()
+    {
+        $attrName = 'attribute_' . mt_rand();
+        $attrValue = 'value_' . mt_rand();
+        $defaultValue = 'default_value_' . mt_rand();
+
+        $bxRequest = $this->createRequestMock();
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withAttribute($attrName, $attrValue);
+
+        $this->assertNotSame($request, $newRequest);
+        $this->assertSame($attrValue, $newRequest->getAttribute($attrName));
+        $this->assertSame([$attrName => $attrValue], $newRequest->getAttributes());
+        $this->assertSame($defaultValue, $newRequest->getAttribute('empty', $defaultValue));
+    }
+
+    /**
+     * Проверяет, что объект удаляет указанный атрибут.
+     */
+    public function testWithoutAttribute()
+    {
+        $attrName = 'attribute_' . mt_rand();
+        $attrValue = 'value_' . mt_rand();
+
+        $bxRequest = $this->createRequestMock();
+        $server = $this->createServerMock();
+
+        $request = new ServerRequest($bxRequest, $server);
+        $newRequest = $request->withAttribute($attrName, $attrValue);
+        $withoutAttributeRequest = $newRequest->withoutAttribute($attrName);
+
+        $this->assertNotSame($newRequest, $withoutAttributeRequest);
+        $this->assertSame(null, $withoutAttributeRequest->getAttribute($attrName));
+    }
+
     /**
      * Проверяет, что объект возвращает правильную цель запроса.
      */
@@ -148,18 +425,23 @@ class ServerRequestTest extends BaseTestCase
     public function testGetHeaders()
     {
         $serverHeaders = [
-            'HTTP_HOST' => 'localhost',
-            'HTTP_CONNECTION' => 'keep-alive',
-            'HTTP_USER_AGENT' => 'Mozilla/5.0',
+            'host' => 'localhost',
+            'connection' => 'keep-alive',
+            'user-agent' => 'Mozilla/5.0',
         ];
         $etalonHeaders = [
-            'host' => [$serverHeaders['HTTP_HOST']],
-            'connection' => [$serverHeaders['HTTP_CONNECTION']],
-            'user-agent' => [$serverHeaders['HTTP_USER_AGENT']],
+            'host' => [$serverHeaders['host']],
+            'connection' => [$serverHeaders['connection']],
+            'user-agent' => [$serverHeaders['user-agent']],
         ];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
         $testHeaders = $request->getHeaders();
@@ -177,11 +459,16 @@ class ServerRequestTest extends BaseTestCase
     public function testHasHeader()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
 
@@ -195,12 +482,17 @@ class ServerRequestTest extends BaseTestCase
     public function testGetHeader()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
-        $etalonHeader = [$serverHeaders['HTTP_TEST']];
+        $etalonHeader = [$serverHeaders['test']];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
 
@@ -214,12 +506,17 @@ class ServerRequestTest extends BaseTestCase
     public function testGetHeaderLine()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
-        $etalonHeader = $serverHeaders['HTTP_TEST'];
+        $etalonHeader = $serverHeaders['test'];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
 
@@ -233,12 +530,17 @@ class ServerRequestTest extends BaseTestCase
     public function testWithHeader()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
         $newHeader = 'test_new_' . mt_rand();
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
         $newRequest = $request->withHeader('TEST', $newHeader);
@@ -267,15 +569,20 @@ class ServerRequestTest extends BaseTestCase
     public function testWithAddedHeader()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
         $newHeaderValue = 'test_new_' . mt_rand();
-        $etalonHeader = [$serverHeaders['HTTP_TEST'], $newHeaderValue];
+        $etalonHeader = [$serverHeaders['test'], $newHeaderValue];
         $emptyHeaderValue = 'test_empty_' . mt_rand();
         $emptyEtalonHeader = [$emptyHeaderValue];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
         $newRequest = $request->withAddedHeader('TEST', $newHeaderValue);
@@ -307,11 +614,16 @@ class ServerRequestTest extends BaseTestCase
     public function testWithoutHeader()
     {
         $serverHeaders = [
-            'HTTP_TEST' => 'test_' . mt_rand(),
+            'test' => 'test_' . mt_rand(),
         ];
 
-        $bxRequest = $this->createRequestMock();
-        $server = $this->createServerMock($serverHeaders);
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue($serverHeaders));
+
+        $bxRequest = $this->createRequestMock(['getHeaders' => $headers]);
+        $server = $this->createServerMock();
 
         $request = new ServerRequest($bxRequest, $server);
         $newRequest = $request->withoutHeader('TEST');
@@ -359,9 +671,35 @@ class ServerRequestTest extends BaseTestCase
      */
     protected function createRequestMock(array $additionalMethods = [])
     {
+        $cookiesDictionary = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $cookiesDictionary->method('toArray')->will($this->returnValue([]));
+
+        $queryParams = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $queryParams->method('toArray')->will($this->returnValue([]));
+
+        $postParams = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $postParams->method('toArray')->will($this->returnValue([]));
+
+        $headers = $this->getMockBuilder('Bitrix\Main\Type\ParameterDictionary')
+            ->setMethods(['toArray'])
+            ->getMock();
+        $headers->method('toArray')->will($this->returnValue([]));
+
         $defaultMethods = [
             'getRequestUri' => '/',
             'getRequestMethod' => 'GET',
+            'getCookieRawList' => $cookiesDictionary,
+            'getQueryList' => $queryParams,
+            'getHeaders' => $headers,
+            'getHeader' => null,
+            'getPostList' => $postParams,
+            'isPost' => false,
         ];
         $allMethods = array_merge($defaultMethods, $additionalMethods);
 
@@ -369,7 +707,11 @@ class ServerRequestTest extends BaseTestCase
             ->setMethods(array_keys($allMethods))
             ->getMock();
         foreach ($allMethods as $methodName => $methodValue) {
-            $bxRequest->method($methodName)->will($this->returnValue($methodValue));
+            if (is_callable($methodValue)) {
+                $bxRequest->method($methodName)->will($this->returnCallback($methodValue));
+            } else {
+                $bxRequest->method($methodName)->will($this->returnValue($methodValue));
+            }
         }
 
         return $bxRequest;

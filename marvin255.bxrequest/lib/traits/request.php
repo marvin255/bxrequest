@@ -23,7 +23,7 @@ trait Request
     protected $uri;
 
     /**
-     * @inheritdoc
+     * @return string
      */
     public function getRequestTarget()
     {
@@ -31,7 +31,9 @@ trait Request
     }
 
     /**
-     * @inheritdoc
+     * @param string $requestTarget
+     *
+     * @return static
      */
     public function withRequestTarget($requestTarget)
     {
@@ -42,7 +44,7 @@ trait Request
     }
 
     /**
-     * @inheritdoc
+     * @return string
      */
     public function getMethod()
     {
@@ -50,7 +52,9 @@ trait Request
     }
 
     /**
-     * @inheritdoc
+     * @param string $method
+     *
+     * @return static
      */
     public function withMethod($method)
     {
@@ -61,7 +65,7 @@ trait Request
     }
 
     /**
-     * @inheritdoc
+     * @return \Psr\Http\Message\UriInterface
      */
     public function getUri()
     {
@@ -69,7 +73,10 @@ trait Request
     }
 
     /**
-     * @inheritdoc
+     * @param \Psr\Http\Message\UriInterface $uri
+     * @param bool                           $preserveHost
+     *
+     * @return static
      */
     public function withUri(UriInterface $uri, $preserveHost = false)
     {

@@ -6,14 +6,16 @@ use Psr\Http\Message\ServerRequestInterface;
 use Bitrix\Main\HttpRequest;
 use Bitrix\Main\Server;
 use Marvin255\Bxrequest\streams\Input;
+use RuntimeException;
 
 /**
  * Объект с методами для получения данных из http запроса на сервере.
  */
 class ServerRequest implements ServerRequestInterface
 {
-    use \Marvin255\Bxrequest\traits\Message;
-    use \Marvin255\Bxrequest\traits\Request;
+    use traits\Message;
+    use traits\Request;
+    use traits\ServerRequest;
 
     /**
      * @var \Bitrix\Main\HttpRequest
@@ -23,102 +25,14 @@ class ServerRequest implements ServerRequestInterface
     /**
      * @param \Bitrix\Main\HttpRequest
      * @param \Bitrix\Main\Server
+     *
+     * @throws \RuntimeException
      */
     public function __construct(HttpRequest $bitrixRequest, Server $bitrixServer)
     {
         $this->loadRequestInfo($bitrixRequest);
         $this->loadServerInfo($bitrixServer);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getServerParams()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getCookieParams()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withCookieParams(array $cookies)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getQueryParams()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withQueryParams(array $query)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getUploadedFiles()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withUploadedFiles(array $uploadedFiles)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getParsedBody()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withParsedBody($data)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getAttributes()
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function getAttribute($name, $default = null)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withAttribute($name, $value)
-    {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function withoutAttribute($name)
-    {
+        $this->loadBody($bitrixRequest, $bitrixServer);
     }
 
     /**
@@ -129,9 +43,16 @@ class ServerRequest implements ServerRequestInterface
      */
     protected function loadRequestInfo(HttpRequest $request)
     {
+        $this->cookies = $request->getCookieRawList()->toArray();
+        $this->queryParams = $request->getQueryList()->toArray();
+
         $this->requestTarget = $request->getRequestUri();
         $this->method = $request->getRequestMethod();
         $this->uri = new Uri($request->getRequestUri());
+
+        foreach ($request->getHeaders()->toArray() as $header => $headerValue) {
+            $this->headers[$header] = is_array($headerValue) ? $headerValue : [$headerValue];
+        }
     }
 
     /**
@@ -142,7 +63,7 @@ class ServerRequest implements ServerRequestInterface
      */
     protected function loadServerInfo(Server $server)
     {
-        $arServer = $server->toArray();
+        $this->serverParams = $arServer = $server->toArray();
 
         if (
             isset($arServer['SERVER_PROTOCOL'])
@@ -150,16 +71,42 @@ class ServerRequest implements ServerRequestInterface
         ) {
             $this->protocolVersion = $matches[1];
         }
+    }
 
-        foreach ($arServer as $key => $value) {
-            if (strpos($key, 'HTTP_') !== 0) {
-                continue;
-            }
-            $headerName = str_replace('_', '-', substr($key, 5));
-            $headerName = $this->normilizeHeaderName($headerName);
-            $this->headers[$headerName] = [$value];
+    /**
+     * Десериализует тело запроса и сохраняет в текущем объекте.
+     *
+     * @param \Bitrix\Main\HttpRequest $request
+     * @param \Bitrix\Main\Server      $server
+     *
+     * @throws \RuntimeException
+     */
+    protected function loadBody(HttpRequest $request, Server $server)
+    {
+        $this->body = new Input(fopen('php://input', 'rb'));
+
+        $postContentTypes = [
+            'application/x-www-form-urlencoded',
+            'multipart/form-data',
+        ];
+        $jsonContentTypes = [
+            'application/vnd.api+json',
+            'application/json',
+        ];
+        $contentType = $request->getHeader('content-type');
+        if (preg_match('#([^;/]+/[^;/]+)#', $contentType, $matches)) {
+            $contentType = $matches[1];
         }
 
-        $this->body = new Input(fopen('php://input', 'rb'));
+        if (in_array($contentType, $postContentTypes) && $request->isPost()) {
+            $this->parsedBody = $request->getPostList()->toArray();
+        } elseif (in_array($contentType, $jsonContentTypes)) {
+            $this->parsedBody = json_decode($request->getInput(), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new RuntimeException(
+                    'Json decode error: ' . json_last_error_msg()
+                );
+            }
+        }
     }
 }
