@@ -54,7 +54,7 @@ trait Response
      */
     public function getReasonPhrase()
     {
-        return $newRequest->reasonPhrase;
+        return $this->reasonPhrase;
     }
 
     /**
@@ -66,7 +66,7 @@ trait Response
      */
     protected function checkStatusCode($statusCode)
     {
-        $intCode = (int) $code;
+        $intCode = (int) $statusCode;
 
         return $intCode >= 100 && $intCode <= 999;
     }
