@@ -18,11 +18,6 @@ class ServerRequest implements ServerRequestInterface
     use traits\ServerRequest;
 
     /**
-     * @var \Bitrix\Main\HttpRequest
-     */
-    protected $bitrixRequest;
-
-    /**
      * @param \Bitrix\Main\HttpRequest
      * @param \Bitrix\Main\Server
      *
