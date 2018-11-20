@@ -13,6 +13,28 @@ use RuntimeException;
 class ServerRequestFactory
 {
     /**
+     * @var \Psr\Http\Message\ServerRequestInterface
+     */
+    protected static $instance;
+
+    /**
+     * Возвращает объект запроса, если он существует, если не существует, то
+     * создает новый и запоминает.
+     *
+     * @return \Psr\Http\Message\ServerRequestInterface
+     *
+     * @throws \RuntimeException
+     */
+    public static function instance()
+    {
+        if (self::$instance === null) {
+            self::$instance = self::createRequest();
+        }
+
+        return self::$instance;
+    }
+
+    /**
      * Выбрасывает событие для создания нового объекта запроса. Если объект не был
      * задан, то создает объект \Marvin255\Bxrequest\ServerRequest и в качестве
      * параметров передает объекты из стандартного Application::getInstance.
@@ -21,7 +43,7 @@ class ServerRequestFactory
      *
      * @throws \RuntimeException
      */
-    public function createRequest()
+    public static function createRequest()
     {
         $event = new Event('marvin255.bxrequest', 'createRequest', []);
         $event->send();
