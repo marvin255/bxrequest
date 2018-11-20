@@ -3,6 +3,7 @@
 namespace Marvin255\Bxrequest\bitrix;
 
 use Bitrix\Main\Type;
+use Bitrix\Main\Server;
 
 /**
  * Класс, который расширяет стандартный HttpRequest методом для получения
