@@ -2,6 +2,7 @@
 
 namespace Marvin255\Bxrequest;
 
+use Marvin255\Bxrequest\bitrix\HttpRequest;
 use Psr\Http\Message\ServerRequestInterface;
 use Bitrix\Main\Event;
 use Bitrix\Main\Application;
@@ -50,11 +51,7 @@ class ServerRequestFactory
 
         $request = $event->getParameter('request');
         if (empty($request)) {
-            $app = Application::getInstance();
-            $request = new ServerRequest(
-                $app->getContext()->getRequest(),
-                $app->getContext()->getServer()
-            );
+            $request = self::createRequestDefault();
         } elseif (!($request instanceof ServerRequestInterface)) {
             throw new RuntimeException(
                 "Request from event must implements \Psr\Http\Message\ServerRequestInterface"
@@ -62,5 +59,24 @@ class ServerRequestFactory
         }
 
         return $request;
+    }
+
+    /**
+     * Создает объект запроса по умолчанию.
+     *
+     * @return \Psr\Http\Message\ServerRequestInterface
+     */
+    protected static function createRequestDefault()
+    {
+        $app = Application::getInstance();
+        $server = $app->getContext()->getServer();
+        $request = $app->getContext()->getRequest();
+
+        //хак для старых битриксов
+        if (!method_exists($request, 'getHeaders')) {
+            $request = new HttpRequest($server, $_GET, $_POST, $_FILES, $_COOKIE);
+        }
+
+        return new ServerRequest($request, $server);
     }
 }
