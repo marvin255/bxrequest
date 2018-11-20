@@ -8,7 +8,7 @@ use Bitrix\Main\Type;
  * Класс, который расширяет стандартный HttpRequest методом для получения
  * заголовков запроса.
  */
-class HttpRequest extends Bitrix\Main\HttpRequest
+class HttpRequest extends \Bitrix\Main\HttpRequest
 {
     /**
      * @var Type\ParameterDictionary
