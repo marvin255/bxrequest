@@ -25,10 +25,10 @@ PSR-7 совместимые http сообщения для 1С-Битрикс.
     ```javascript
     "scripts": {
         "post-install-cmd": [
-            "\\marvin255\\bxrequest\\installer\\Composer::injectModule"
+            "\\Marvin255\\Bxrequest\\installer\\Composer::injectModule"
         ],
         "post-update-cmd": [
-            "\\marvin255\\bxrequest\\installer\\Composer::injectModule"
+            "\\Marvin255\\Bxrequest\\installer\\Composer::injectModule"
         ]
     }
     ```
