@@ -73,7 +73,7 @@ class HttpRequest extends \Bitrix\Main\HttpRequest
      *
      * @param string $name name of header
      *
-     * @return null|string
+     * @return string|null
      */
     public function getHeader($name)
     {
